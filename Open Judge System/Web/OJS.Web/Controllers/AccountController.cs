@@ -65,8 +65,12 @@
             }
             else
             {
-                this.TempData.AddInfoMessage(Resources.Account.AccountControllers.Inactive_login_system);
-                return this.RedirectToHome();
+                this.TempData["temp-err"] = result.ErrorMessage;
+
+                return await this.FallBackLogin(model, returnUrl);
+
+                // this.TempData.AddInfoMessage(Resources.Account.AccountControllers.Inactive_login_system);
+                // return this.RedirectToHome();
             }
 
             if (externalUser != null)
@@ -220,6 +224,22 @@
             }
 
             return this.RedirectToAction(GlobalConstants.Index, "Home");
+        }
+
+        private async Task<ActionResult> FallBackLogin(LoginViewModel model, string returnUrl)
+        {
+            var user = await this.UserManager.FindAsync(model.UserName, model.Password);
+            if (user != null)
+            {
+                await this.SignInAsync(user, model.RememberMe);
+                return this.RedirectToLocal(returnUrl);
+            }
+
+            this.ModelState.AddModelError(
+                string.Empty,
+                Resources.Account.AccountViewModels.Invalid_username_or_password);
+
+            return this.View(model);
         }
     }
 }

@@ -13,7 +13,7 @@
     @Styles.Render("~/Content/home/index")
 }
 
-<div class="jumbotron">
+<div data-err="@TempData["temp-err"]" class="jumbotron">
     <div class="row">
         <div class="col-md-7">
             <h1>@Resource.Project_title</h1>
