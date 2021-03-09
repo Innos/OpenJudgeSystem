@@ -1,4 +1,10 @@
-﻿namespace OJS.Web.Areas.Contests.Controllers
+﻿using System;
+using OJS.Data.Models;
+using OJS.Workers.Common.Models;
+using OJS.Workers.SubmissionProcessors;
+using OJS.Workers.SubmissionProcessors.Models;
+
+namespace OJS.Web.Areas.Contests.Controllers
 {
     using System.Linq;
     using System.Net;
@@ -108,6 +114,52 @@
 
             // TODO: When text content is saved, uncompressing should be performed
             return this.File(submission.Content, GlobalConstants.BinaryFileMimeType, string.Format("Submission_{0}.{1}", submission.Id, submission.FileExtension));
+        }
+
+        [HttpPost]
+        public ActionResult SaveExecutionResult(int id, RemoteSubmissionResult submissionResult)
+        {
+            var submission = this.submissionsData.GetById(id);
+
+            if (submission == null || (submission.IsDeleted && !this.User.IsAdmin()))
+            {
+                throw new HttpException((int)HttpStatusCode.NotFound, Resource.Submission_not_found);
+            }
+            
+            this.UpdateSubmissionResult(submission, submissionResult);
+
+            return this.JsonSuccess(submission.Id);
+        }
+
+        private void UpdateSubmissionResult(Submission submission, RemoteSubmissionResult result)
+        {
+            submission.IsCompiledSuccessfully = result.ExecutionResult.IsCompiledSuccessfully;
+            submission.CompilerComment = result.ExecutionResult.CompilerComment;
+
+            if (!result.ExecutionResult.IsCompiledSuccessfully)
+            {
+                this.submissionsData.Update(submission);
+                return;
+            }
+
+            foreach (var testResult in result.ExecutionResult.TaskResult.TestResults)
+            {
+                var testRun = new TestRun
+                {
+                    CheckerComment = testResult.CheckerDetails.Comment,
+                    ExpectedOutputFragment = testResult.CheckerDetails.ExpectedOutputFragment,
+                    UserOutputFragment = testResult.CheckerDetails.UserOutputFragment,
+                    ExecutionComment = testResult.ExecutionComment,
+                    MemoryUsed = testResult.MemoryUsed,
+                    ResultType = (TestRunResultType)Enum.Parse(typeof(TestRunResultType), testResult.ResultType),
+                    TestId = testResult.Id,
+                    TimeUsed = testResult.TimeUsed
+                };
+
+                submission.TestRuns.Add(testRun);
+            }
+
+            this.submissionsData.Update(submission);
         }
     }
 }

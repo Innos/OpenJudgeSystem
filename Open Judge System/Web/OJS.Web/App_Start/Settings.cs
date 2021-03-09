@@ -18,6 +18,8 @@
 
         public static string SulsPlatformBaseUrl => GetSetting("SulsPlatformBaseUrl");
 
+        public static string DistributorServiceLocation => GetSetting("DistributorServiceLocation");
+
         public static string SvnBaseUrl => GetSetting("SvnBaseUrl");
 
         public static string LearningSystemSvnDownloadBaseUrl => GetSetting("LearningSystemSvnDownloadBaseUrl");

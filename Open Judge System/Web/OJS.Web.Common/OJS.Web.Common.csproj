@@ -139,6 +139,7 @@
     <Compile Include="Interfaces\IAdministrationViewModel.cs" />
     <Compile Include="Extensions\PrincipalExtensions.cs" />
     <Compile Include="Models\JsonResponse.cs" />
+    <Compile Include="Models\SubmissionForProcessing.cs" />
     <Compile Include="OjsUserManager.cs" />
     <Compile Include="SearchResultType.cs" />
     <Compile Include="SystemMessage.cs" />

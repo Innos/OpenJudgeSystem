@@ -1,4 +1,11 @@
-﻿namespace OJS.Web.Areas.Contests.Controllers
+﻿using OJS.Workers.Common;
+using OJS.Workers.Common.Models;
+using OJS.Workers.ExecutionStrategies.Models;
+using OJS.Workers.SubmissionProcessors.Common;
+using OJS.Workers.SubmissionProcessors.Formatters;
+using OJS.Workers.SubmissionProcessors.Models;
+
+namespace OJS.Web.Areas.Contests.Controllers
 {
     using System;
     using System.Collections.Generic;
@@ -55,6 +62,10 @@
         private readonly ISubmissionsForProcessingDataService submissionsForProcessingData;
         private readonly IIpsDataService ipsData;
 
+        private readonly HttpService http;
+        private readonly string distributorServiceLocation;
+        private readonly string endpoint;
+
         public CompeteController(
             IOjsData data,
             IParticipantsBusinessService participantsBusiness,
@@ -75,6 +86,9 @@
             this.submissionsData = submissionsData;
             this.submissionsForProcessingData = submissionsForProcessingData;
             this.ipsData = ipsData;
+            this.http = new HttpService();
+            this.distributorServiceLocation = Settings.DistributorServiceLocation;
+            this.endpoint = $"{distributorServiceLocation}/submissions/add";
         }
 
         protected CompeteController(
@@ -476,11 +490,44 @@
 
             this.Data.Submissions.Add(newSubmission);
             this.Data.SaveChanges();
-
+            
             this.submissionsForProcessingData.AddOrUpdateBySubmission(newSubmission.Id);
 
             return this.Json(participantSubmission.ProblemId);
         }
+        
+        private object BuildRequestBody(Submission submission) => 
+        new
+        {
+            Id = submission.Id,
+            AdditionalCompilerArguments = submission.SubmissionType.AdditionalCompilerArguments,
+            AllowedFileExtensions = submission.SubmissionType.AllowedFileExtensions,
+            FileContent = submission.Content,
+            CompilerType = submission.SubmissionType.CompilerType,
+            TimeLimit = submission.Problem.TimeLimit,
+            MemoryLimit = submission.Problem.MemoryLimit,
+            ExecutionStrategyType = submission.SubmissionType.ExecutionStrategyType,
+            ExecutionType = ExecutionType.TestsExecution,
+            MaxPoints = submission.Problem.MaximumPoints,
+            Input = new TestsInputModel
+            {
+                TaskSkeleton = submission.Problem.SolutionSkeleton,
+                CheckerParameter = submission.Problem.Checker.Parameter,
+                CheckerAssemblyName = submission.Problem.Checker.DllFile,
+                CheckerTypeName = submission.Problem.Checker.ClassName,
+                Tests = submission.Problem.Tests
+                    .AsQueryable()
+                    .Select(t => new TestContext
+                    {
+                        Id = t.Id,
+                        Input = t.InputDataAsString,
+                        Output = t.OutputDataAsString,
+                        IsTrialTest = t.IsTrialTest,
+                        OrderBy = t.OrderBy
+                    })
+                    .ToList()
+            }
+        };
 
         // TODO: Extract common logic between SubmitBinaryFile and Submit methods
         public ActionResult SubmitBinaryFile(BinarySubmissionModel participantSubmission, bool official, int? returnProblem)
