@@ -1,4 +1,12 @@
-﻿namespace OJS.Web.Controllers
+﻿using System;
+using System.Net;
+using System.Web;
+using OJS.Data.Models;
+using OJS.Services.Data.SubmissionsForProcessing;
+using OJS.Workers.Common.Models;
+using OJS.Workers.SubmissionProcessors.Models;
+
+namespace OJS.Web.Controllers
 {
     using System.Diagnostics;
     using System.Linq;
@@ -21,12 +29,19 @@
     public class SubmissionsController : BaseController
     {
         private readonly ISubmissionsDataService submissionsData;
+        private readonly ISubmissionsForProcessingDataService submissionsForProcessingDataService;
+
 
         public SubmissionsController(
             IOjsData data,
-            ISubmissionsDataService submissionsData)
-            : base(data) =>
-                this.submissionsData = submissionsData;
+            ISubmissionsDataService submissionsData,
+            ISubmissionsForProcessingDataService submissionsForProcessingDataService)
+            : base(data)
+        {
+            this.submissionsData = submissionsData;
+            this.submissionsForProcessingDataService = submissionsForProcessingDataService;
+        }
+                
 
         [AuthorizeRoles(SystemRole.Administrator, SystemRole.Lecturer)]
         public ActionResult Index()
@@ -144,6 +159,45 @@
             }
 
             return this.RedirectToAction<SubmissionsController>(c => c.Index());
+        }
+        
+        [HttpPost]
+        public ActionResult SaveExecutionResult(RemoteSubmissionResult executionResult)
+        {
+            var request = this.HttpContext.Request;
+            var submission = this.submissionsData.GetById(executionResult.SubmissionId);
+
+            submission.IsCompiledSuccessfully = executionResult.ExecutionResult.IsCompiledSuccessfully;
+            submission.CompilerComment = executionResult.ExecutionResult.CompilerComment;
+
+            if (!executionResult.ExecutionResult.IsCompiledSuccessfully)
+            {
+                throw new HttpException((int)HttpStatusCode.NotFound, "Submission not compiled successfully");
+            }
+
+            foreach (var testResult in executionResult.ExecutionResult.TaskResult.TestResults)
+            {
+                var testRun = new TestRun
+                {
+                    CheckerComment = testResult.CheckerDetails.Comment,
+                    ExpectedOutputFragment = testResult.CheckerDetails.ExpectedOutputFragment,
+                    UserOutputFragment = testResult.CheckerDetails.UserOutputFragment,
+                    ExecutionComment = testResult.ExecutionComment,
+                    MemoryUsed = testResult.MemoryUsed,
+                    ResultType = (TestRunResultType)Enum.Parse(typeof(TestRunResultType), testResult.ResultType),
+                    TestId = testResult.Id,
+                    TimeUsed = testResult.TimeUsed
+                };
+
+                submission.TestRuns.Add(testRun);
+            }
+
+            this.submissionsData.Update(submission);
+
+            var submissionForProcessing = this.submissionsForProcessingDataService.GetBySubmission(submission.Id);
+            this.submissionsForProcessingDataService.RemoveBySubmission(submission.Id);
+
+            return this.JsonSuccess(executionResult.SubmissionId);
         }
     }
 }
