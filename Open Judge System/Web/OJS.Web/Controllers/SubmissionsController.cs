@@ -3,8 +3,8 @@ using System.Net;
 using System.Web;
 using OJS.Data.Models;
 using OJS.Services.Data.SubmissionsForProcessing;
+using OJS.Web.Models;
 using OJS.Workers.Common.Models;
-using OJS.Workers.SubmissionProcessors.Models;
 
 namespace OJS.Web.Controllers
 {
@@ -41,7 +41,6 @@ namespace OJS.Web.Controllers
             this.submissionsData = submissionsData;
             this.submissionsForProcessingDataService = submissionsForProcessingDataService;
         }
-                
 
         [AuthorizeRoles(SystemRole.Administrator, SystemRole.Lecturer)]
         public ActionResult Index()
@@ -162,20 +161,22 @@ namespace OJS.Web.Controllers
         }
         
         [HttpPost]
-        public ActionResult SaveExecutionResult(RemoteSubmissionResult executionResult)
+        public ActionResult SaveExecutionResult(SubmissionExecutionResult submissionExecutionResult)
         {
-            var request = this.HttpContext.Request;
-            var submission = this.submissionsData.GetById(executionResult.SubmissionId);
+            var submission = this.submissionsData.GetById(submissionExecutionResult.SubmissionId);
+            Console.WriteLine();
 
-            submission.IsCompiledSuccessfully = executionResult.ExecutionResult.IsCompiledSuccessfully;
-            submission.CompilerComment = executionResult.ExecutionResult.CompilerComment;
+            submission.IsCompiledSuccessfully = submissionExecutionResult.ExecutionResult.IsCompiledSuccessfully;
+            submission.CompilerComment = submissionExecutionResult.ExecutionResult.CompilerComment;
+            submission.Points = submissionExecutionResult.ExecutionResult.TaskResult.Points;
+            submission.Processed = true;
 
-            if (!executionResult.ExecutionResult.IsCompiledSuccessfully)
+            if (!submissionExecutionResult.ExecutionResult.IsCompiledSuccessfully)
             {
                 throw new HttpException((int)HttpStatusCode.NotFound, "Submission not compiled successfully");
             }
 
-            foreach (var testResult in executionResult.ExecutionResult.TaskResult.TestResults)
+            foreach (var testResult in submissionExecutionResult.ExecutionResult.TaskResult.TestResults)
             {
                 var testRun = new TestRun
                 {
@@ -191,13 +192,13 @@ namespace OJS.Web.Controllers
 
                 submission.TestRuns.Add(testRun);
             }
-
+            
             this.submissionsData.Update(submission);
 
             var submissionForProcessing = this.submissionsForProcessingDataService.GetBySubmission(submission.Id);
             this.submissionsForProcessingDataService.RemoveBySubmission(submission.Id);
 
-            return this.JsonSuccess(executionResult.SubmissionId);
+            return this.JsonSuccess(submissionExecutionResult.SubmissionId);
         }
     }
 }

@@ -1867,6 +1867,7 @@
     <Compile Include="Infrastructure\SimpleInjectorPackages\DataPackage.cs" />
     <Compile Include="Infrastructure\SimpleInjectorPackages\ServicesPackage.cs" />
     <Compile Include="Infrastructure\SimpleInjectorPackages\ToolsPackage.cs" />
+    <Compile Include="Models\SubmissionExecutionResult.cs" />
     <Compile Include="ViewModels\Account\ChangeUsernameViewModel.cs" />
     <Compile Include="Areas\Users\ViewModels\UserParticipationViewModel.cs" />
     <Compile Include="Areas\Users\ViewModels\UserSettingsViewModel.cs" />

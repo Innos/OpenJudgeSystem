@@ -19,7 +19,7 @@ namespace OJS.Web
         private void ConfigureHangfire(IAppBuilder app)
         {
             GlobalConfiguration.Configuration.UseSqlServerStorage("DefaultConnection");
-
+            
             var options = new DashboardOptions
             {
                 Authorization = new[] { new HangFireAuthenticationFilter(), }
