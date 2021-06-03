@@ -9,7 +9,7 @@
     {
         public void RegisterServices(Container container)
         {
-            container.RegisterCollection(typeof(IActionFilter<>), typeof(IActionFilter<>).Assembly);
+            container.Register(typeof(IActionFilter<>), typeof(IActionFilter<>).Assembly);
         }
     }
 }
