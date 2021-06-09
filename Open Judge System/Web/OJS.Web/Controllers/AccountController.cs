@@ -1,5 +1,6 @@
 ﻿namespace OJS.Web.Controllers
 {
+    using System.Linq;
     using System.Threading.Tasks;
     using System.Web;
     using System.Web.Mvc;
@@ -52,35 +53,36 @@
                 return this.View(model);
             }
 
-            ExternalUserInfoModel externalUser;
+            //ExternalUserInfoModel externalUser;
 
-            var result = await this.httpRequester.GetAsync<ExternalUserInfoModel>(
-                new { model.UserName },
-                string.Format(UrlConstants.GetUserInfoByUsernameApiFormat, Settings.SulsPlatformBaseUrl),
-                Settings.ApiKey);
+            //var result = await this.httpRequester.GetAsync<ExternalUserInfoModel>(
+            //    new { model.UserName },
+            //    string.Format(UrlConstants.GetUserInfoByUsernameApiFormat, Settings.SulsPlatformBaseUrl),
+            //    Settings.ApiKey);
 
-            if (result.IsSuccess)
+            //if (result.IsSuccess)
+            //{
+            //    externalUser = result.Data;
+            //}
+            //else
+            //{
+            //    this.TempData.AddInfoMessage(Resources.Account.AccountControllers.Inactive_login_system);
+            //    return this.RedirectToHome();
+            //}
+
+            //if (externalUser != null)
+            //{
+            //    var userEntity = externalUser.Entity;
+            //    this.AddOrUpdateUser(userEntity);
+
+            var user = await this.UserManager.FindAsync(model.UserName, model.Password);
+            if (user != null)
             {
-                externalUser = result.Data;
-            }
-            else
-            {
-                this.TempData.AddInfoMessage(Resources.Account.AccountControllers.Inactive_login_system);
-                return this.RedirectToHome();
+                await this.SignInAsync(user, model.RememberMe);
+                return this.RedirectToLocal(returnUrl);
             }
 
-            if (externalUser != null)
-            {
-                var userEntity = externalUser.Entity;
-                this.AddOrUpdateUser(userEntity);
-
-                var user = await this.UserManager.FindAsync(model.UserName, model.Password);
-                if (user != null)
-                {
-                    await this.SignInAsync(userEntity, model.RememberMe);
-                    return this.RedirectToLocal(returnUrl);
-                }
-            }
+            //}
 
             this.ModelState.AddModelError(
                 string.Empty,
@@ -89,12 +91,74 @@
             return this.View(model);
         }
 
-        [AllowAnonymous]
-        public ActionResult Register() => this.RedirectToExternalSystemMessage();
+        private void AddErrors(IdentityResult result)
+        {
+            foreach (var error in result.Errors)
+            {
+                this.ModelState.AddModelError(string.Empty, error);
+            }
+        }
 
+        //[AllowAnonymous]
+        //public ActionResult Register() => this.RedirectToExternalSystemMessage();
+
+
+        // GET: /Account/Register
+        [AllowAnonymous]
+        public ActionResult Register()
+        {
+            if (this.User.Identity.IsAuthenticated)
+            {
+                return this.RedirectToAction("Manage");
+            }
+
+            return this.View();
+        }
+
+        //[HttpPost]
+        //[AllowAnonymous]
+        //public ActionResult Register(RegisterViewModel model, bool captchaValid) => this.RedirectToExternalSystemMessage();
+
+        // POST: /Account/Register
         [HttpPost]
         [AllowAnonymous]
-        public ActionResult Register(RegisterViewModel model, bool captchaValid) => this.RedirectToExternalSystemMessage();
+        //[RecaptchaControlMvc.CaptchaValidator]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> Register(RegisterViewModel model)
+        {
+            if (this.Data.Users.All().Any(x => x.Email == model.Email))
+            {
+                this.ModelState.AddModelError("Email", Resources.Account.AccountViewModels.Email_already_registered);
+            }
+
+            if (this.Data.Users.All().Any(x => x.UserName == model.UserName))
+            {
+                this.ModelState.AddModelError("UserName", Resources.Account.AccountViewModels.User_already_registered);
+            }
+
+            //if (!captchaValid)
+            //{
+            //    this.ModelState.AddModelError("Captcha", Resources.Account.Views.General.Captcha_invalid);
+            //}
+
+            if (this.ModelState.IsValid)
+            {
+                var user = new UserProfile { UserName = model.UserName, Email = model.Email };
+                var result = await this.UserManager.CreateAsync(user, model.Password);
+                if (result.Succeeded)
+                {
+                    await this.SignInAsync(user, isPersistent: false);
+                    return this.RedirectToAction(GlobalConstants.Index, "Home");
+                }
+
+                this.AddErrors(result);
+            }
+
+            // If we got this far, something failed, redisplay form
+            return this.View(model);
+        }
+
+
 
         [HttpPost]
         public ActionResult Disassociate(string loginProvider, string providerKey) => this.RedirectToExternalSystemMessage();
