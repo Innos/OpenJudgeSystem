@@ -29,7 +29,7 @@
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             BundleConfig.RegisterBundles(BundleTable.Bundles);
             ViewEngineConfig.RegisterViewEngines(ViewEngines.Engines);
-            HangfireBootstrapper.Instance.Start();
+            //HangfireBootstrapper.Instance.Start();
         }
 
         protected void Application_End(object sender, EventArgs e)

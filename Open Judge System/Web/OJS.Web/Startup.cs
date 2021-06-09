@@ -13,7 +13,7 @@ namespace OJS.Web
         public void Configuration(IAppBuilder app)
         {
             this.ConfigureAuth(app);
-            this.ConfigureHangfire(app);
+            //this.ConfigureHangfire(app);
         }
 
         private void ConfigureHangfire(IAppBuilder app)
