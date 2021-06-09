@@ -1,0 +1,6 @@
+Hangfire tries to access the Judge DB before the EntityFramework's DB initializer can run and create/update it, thus we need to disable Hangfire the first time we run the project, after the DB has been created this is no longer a problem
+
+The LocalWorker is a service that is installed directly on the OS, this can be done from the .bat files in the "Batch Files" folder. This folder will be copied to the build artifact's folder for the OJS.LocalWorker (default bin/Debug/)
+
+In order for the LocalWorker service to have access to the SQL DB, we need to grant the user running the service access to the Judge DB in the SQL (usually this user is NT_AUTHORITY/System)
+
